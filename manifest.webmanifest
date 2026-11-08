@@ -1,0 +1,9 @@
+{
+  "name": "赤坂麻凪さん 活動まとめ",
+  "short_name": "麻凪さんまとめ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fbf8f9",
+  "theme_color": "#f7e9ef",
+  "icons": []
+}

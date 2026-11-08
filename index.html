@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7e9ef">
+<link rel="manifest" href="manifest.webmanifest">
+<title>赤坂麻凪さん 活動まとめ</title>
+<style>
+:root{--pink:#b85d82;--pale:#f7e9ef;--ink:#342b30;--muted:#81757b}
+*{box-sizing:border-box}body{margin:0;background:#fbf8f9;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+header{padding:26px 18px 18px;background:linear-gradient(135deg,#f7e9ef,#fff);border-bottom:1px solid #f0dce5}
+h1{font-size:21px;margin:0 0 6px}header p{margin:0;color:var(--muted);font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}
+nav{display:flex;gap:8px;overflow:auto;margin-bottom:16px}
+nav button,.action{border:0;border-radius:999px;padding:10px 14px;background:#eee5e9;color:var(--ink);font-weight:600;white-space:nowrap}
+nav button.active,.action.primary{background:var(--pink);color:white}
+.panel{display:none}.panel.active{display:block}
+.card{background:white;border:1px solid #eee4e8;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 3px 12px #4b243008}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{text-align:center;background:white;border:1px solid #eee4e8;border-radius:14px;padding:12px 5px}.stat strong{display:block;font-size:23px;color:var(--pink)}.stat span{font-size:11px;color:var(--muted)}
+label{display:block;font-size:13px;margin:10px 0 5px;color:var(--muted)}
+input,textarea{width:100%;padding:11px;border:1px solid #e5d9df;border-radius:10px;background:#fff;font:inherit}
+textarea{min-height:65px;resize:vertical}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+.item{display:flex;gap:10px;align-items:flex-start}.item input[type=checkbox]{width:20px;height:20px;accent-color:var(--pink);flex:none;margin-top:2px}
+.item h3{font-size:15px;margin:0 0 4px}.meta{font-size:12px;color:var(--muted);line-height:1.6}
+.small{font-size:12px;color:var(--muted)}.empty{padding:22px;text-align:center;color:var(--muted);font-size:13px}
+button{cursor:pointer}.delete{background:transparent;border:0;color:#a18e97;font-size:12px}
+hr{border:0;border-top:1px solid #f0e8ec;margin:12px 0}
+@media(min-width:600px){main{padding:22px}}
+</style>
+</head>
+<body>
+<header><h1>🌸 赤坂麻凪さん 活動まとめ</h1><p>出演作品・観劇チェック・共演者をまとめて管理</p></header>
+<main>
+<div class="stats">
+ <div class="stat"><strong id="workCount">0</strong><span>登録作品</span></div>
+ <div class="stat"><strong id="watchedCount">0</strong><span>観劇済み</span></div>
+ <div class="stat"><strong id="castCount">0</strong><span>共演者</span></div>
+</div>
+<nav>
+<button class="active" data-tab="works">出演作品</button><button data-tab="add">作品を追加</button><button data-tab="cast">共演者ランキング</button>
+</nav>
+<section id="works" class="panel active">
+ <div class="row"><input id="search" placeholder="作品名・役名で検索"><select id="sort" aria-label="並べ替え"><option value="new">新しい順</option><option value="old">古い順</option><option value="title">作品名順</option></select></div>
+ <div id="workList"></div>
+</section>
+<section id="add" class="panel">
+ <div class="card">
+  <h2 style="font-size:17px;margin-top:0">出演作品を登録</h2>
+  <form id="workForm">
+   <label>作品名 *</label><input name="title" required placeholder="例：舞台タイトル">
+   <div class="row"><div><label>公演開始日</label><input name="date" type="date"></div><div><label>役名</label><input name="role" placeholder="役名"></div></div>
+   <label>劇場</label><input name="venue" placeholder="劇場名">
+   <label>共演者（1人ずつ改行）</label><textarea name="cast" placeholder="共演者A&#10;共演者B"></textarea>
+   <label>メモ</label><textarea name="memo" placeholder="感想・公式情報など"></textarea>
+   <p><button class="action primary" type="submit">作品を保存</button></p>
+  </form>
+ </div>
+</section>
+<section id="cast" class="panel">
+ <p class="small">登録した作品の共演者を自動集計します。同じ名前は同一人物として数えます。</p>
+ <div id="castList"></div>
+</section>
+<p class="small">データはこの端末のブラウザ内に保存されます。機種変更・ブラウザデータ削除に備えて、定期的にバックアップしてください。</p>
+</main>
+<script>
+const KEY='akasaka-managi-works-v1';
+let works=JSON.parse(localStorage.getItem(KEY)||'[]');
+const $=s=>document.querySelector(s);
+function save(){localStorage.setItem(KEY,JSON.stringify(works));render()}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+ $('#workCount').textContent=works.length;
+ $('#watchedCount').textContent=works.filter(w=>w.watched).length;
+ const counts={};works.forEach(w=>w.cast.forEach(n=>{if(n)counts[n]=(counts[n]||0)+1}));
+ $('#castCount').textContent=Object.keys(counts).length;
+ const q=$('#search').value.toLowerCase(), sort=$('#sort').value;
+ let arr=works.filter(w=>(w.title+' '+w.role).toLowerCase().includes(q));
+ arr.sort((a,b)=>sort==='title'?a.title.localeCompare(b.title,'ja'):sort==='old'?(a.date||'').localeCompare(b.date||''):(b.date||'').localeCompare(a.date||''));
+ $('#workList').innerHTML=arr.length?arr.map(w=>`<article class="card"><div class="item"><input type="checkbox" ${w.watched?'checked':''} aria-label="観劇済み" onchange="toggleWatched('${w.id}')"><div style="flex:1"><h3>${esc(w.title)}</h3><div class="meta">${esc(w.date||'日付未登録')}　${esc(w.role||'役名未登録')}<br>${esc(w.venue||'劇場未登録')}<br>共演者：${w.cast.length?w.cast.map(esc).join('、'):'未登録'}</div>${w.memo?`<hr><div class="meta">${esc(w.memo)}</div>`:''}</div><button class="delete" onclick="removeWork('${w.id}')">削除</button></div></article>`).join(''):'<div class="empty">まだ作品が登録されていません。「作品を追加」から登録できます。</div>';
+ const ranked=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ja'));
+ $('#castList').innerHTML=ranked.length?ranked.map(([n,c],i)=>`<article class="card"><div class="row"><strong>${i+1}位　${esc(n)}</strong><span style="text-align:right;color:var(--pink);font-weight:700">${c}作品</span></div><div class="meta">${works.filter(w=>w.cast.includes(n)).map(w=>esc(w.title)).join(' ／ ')}</div></article>`).join(''):'<div class="empty">作品を登録すると、共演者ランキングが自動で作成されます。</div>';
+}
+window.toggleWatched=id=>{const w=works.find(x=>x.id===id);if(w){w.watched=!w.watched;save()}};
+window.removeWork=id=>{if(confirm('この作品を削除しますか？')){works=works.filter(w=>w.id!==id);save()}};
+$('#workForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.target);works.push({id:Date.now().toString(),title:f.get('title').trim(),date:f.get('date'),role:f.get('role').trim(),venue:f.get('venue').trim(),cast:f.get('cast').split(/\n/).map(x=>x.trim()).filter(Boolean),memo:f.get('memo').trim(),watched:false});e.target.reset();save();document.querySelector('[data-tab="works"]').click()});
+$('#search').addEventListener('input',render);$('#sort').addEventListener('change',render);
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.tab).classList.add('active')}));
+if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
+</script>
+</body></html>
